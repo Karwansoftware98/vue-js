@@ -1,0 +1,91 @@
+<script setup>
+    import { Head, Link } from "@inertiajs/vue3";
+    import { ref, reactive } from "@vue/reactivity";
+    import { watch } from "@vue/runtime-core";
+
+    const con = ref(null);
+    let keepReading = ref(true);
+    const bitsArray = ref([]);
+    let filtered = ref();
+
+    const connectButton = () => {
+        if (navigator.serial) {
+            connectSerial();
+        } else {
+            alert("Web Serial API not support.valueed.");
+        }
+    };
+    const port = ref(null);
+
+    function ca() {
+        keepReading.value = true;
+
+        readData();
+    }
+    function sto() {
+        keepReading.value = false;
+    }
+    async function connectSerial() {
+        port.value = await navigator.serial.requestPort();
+        await port.value.open({ baudRate: 9600 });
+        readData();
+    }
+    async function readData() {
+        let reader;
+        let textDecoder = new TextDecoder();
+
+        while (port.value.readable && keepReading.value) {
+            reader = port.value.readable.getReader();
+            try {
+                while (keepReading.value) {
+                    const { value, done } = await reader.read();
+                    if (done) {
+                        keepReading.value = false;
+                        break;
+                    }
+
+                    bitsArray.value.push(textDecoder.decode(value));
+
+                    filtered.value = bitsArray.value
+                        .toString()
+                        .replace(/[^0-9]/g, "");
+                    console.log("filter" + filtered.value);
+                }
+                // }
+                keepReading.value = false;
+            } catch (error) {
+                // Handle error...
+                console.log(error);
+            } finally {
+                // Allow the serial port.value to be closed later.
+                console.log("in array :" + bitsArray);
+
+                console.log("value:" + filtered.value);
+                keepReading.value = false;
+
+                // reader.releaseLock();
+            }
+            keepReading.value = false;
+        }
+        keepReading.value = false;
+        // console.log("serial close");
+        // await port.value.close();
+    }
+
+    watch(filtered, () => {
+        // this callback is invoked when myRef changes
+        console.log("change is : " + typeof filtered);
+    });
+</script>
+
+<template>
+    <div>
+        <button @click="connectButton">Connect via Serial Port.value</button>
+        <button class="ml-10" @click="ca()">refresh</button>
+        <button class="ml-10" @click="sto()">stop</button>
+
+        <div id="target"></div>
+        <p>{{ con }} {{ keepReading }} pp</p>
+        <p>scale : {{ filtered }}</p>
+    </div>
+</template>
